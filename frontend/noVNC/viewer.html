@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>CheckPilot VNC</title>
+    <style>
+        * { margin: 0; padding: 0; }
+        body { background: #000; overflow: hidden; }
+        #screen { width: 100vw; height: 100vh; display: block; }
+        #status { 
+            position: fixed; top: 10px; left: 10px; 
+            color: #0f0; font-family: monospace; 
+            padding: 8px; background: rgba(0,0,0,0.8); 
+            font-size: 12px; z-index: 1000;
+            white-space: pre-wrap; max-width: 600px;
+        }
+        #creds {
+            position: fixed; top: 50px; left: 10px;
+            background: rgba(0,0,0,0.9);
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+        #creds input { padding: 8px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <div id="status">Connecting...</div>
+    <div id="creds">
+        <div style="color:#fff;margin-bottom:10px;">VNC Authentication Required</div>
+        <input type="text" id="username" placeholder="Username" value="user"><br>
+        <input type="password" id="password" placeholder="Password" value="123456abc"><br>
+        <button onclick="submitCreds()">Login</button>
+    </div>
+    <canvas id="screen"></canvas>
+
+    <script>
+    (function() {
+        var status = document.getElementById('status');
+        var creds = document.getElementById('creds');
+        var canvas = document.getElementById('screen');
+        var ctx = canvas.getContext('2d');
+        var ws, fbWidth = 0, fbHeight = 0, state = 0;
+        var username = 'user', password = '';
+        
+        function getParam(name) {
+            return new URL(window.location.href).searchParams.get(name);
+        }
+        
+        var host = getParam('host') || '10.31.94.173';
+        var port = getParam('port') || '5900';
+        password = getParam('password') || '';
+        var wsUrl = 'ws://' + window.location.host + '/api/vnc/ws?host=' + host + '&port=' + port;
+        
+        log('Host: ' + host + ':' + port);
+        log('WS URL: ' + wsUrl);
+        
+        function log(msg) {
+            status.textContent = msg;
+            console.log('[VNC]', msg);
+        }
+        
+        function u16(buf, off) { return (buf[off] << 8) | buf[off+1]; }
+        function u32(buf, off) { return (buf[off] << 24) | (buf[off+1] << 16) | (buf[off+2] << 8) | buf[off+3]; }
+        function str(buf) {
+            var s = '';
+            for (var i = 0; i < buf.length && buf[i]; i++) s += String.fromCharCode(buf[i]);
+            return s;
+        }
+        function send(arr) { ws && ws.send(arr); }
+        
+        ws = new WebSocket(wsUrl);
+        ws.binaryType = 'arraybuffer';
+        
+        ws.onopen = function() {
+            log('Connected, waiting for server...');
+        };
+        
+        ws.onmessage = function(e) {
+            var data = new Uint8Array(e.data);
+            
+            // Check for VeNCrypt init
+            if (data[0] === 0) {
+                log('VeNCrypt ready');
+                creds.style.display = 'block';
+                return;
+            }
+            
+            // Check for auth result
+            if (data.length === 1 && data[0] === 1) {
+                log('Auth FAILED!');
+                creds.style.display = 'block';
+                return;
+            }
+            if (data.length === 1 && data[0] === 0) {
+                log('Auth OK!');
+                creds.style.display = 'none';
+            }
+            
+            log('Data: ' + data.length + ' bytes');
+            
+            if (state === 0) {
+                // Should be ServerInit
+                fbWidth = u16(data, 0);
+                fbHeight = u16(data, 2);
+                canvas.width = fbWidth;
+                canvas.height = fbHeight;
+                var nameLen = u32(data, 16);
+                var name = str(data.slice(20, 20 + nameLen));
+                log('Connected: ' + fbWidth + 'x' + fbHeight + ' "' + name + '"');
+                state = 1;
+                sendEncodings();
+                requestUpdate();
+            } else if (state === 1 && data[0] === 0) {
+                renderFramebuffer(data);
+                requestUpdate();
+            }
+        };
+        
+        ws.onclose = function(e) { log('Disconnected: ' + e.code); };
+        ws.onerror = function(e) { log('Error!'); };
+        
+        window.submitCreds = function() {
+            username = document.getElementById('username').value;
+            password = document.getElementById('password').value;
+            
+            // Send username + password
+            var msg = new Uint8Array(8 + username.length + password.length);
+            var pos = 0;
+            msg[pos++] = (username.length >> 24) & 0xFF;
+            msg[pos++] = (username.length >> 16) & 0xFF;
+            msg[pos++] = (username.length >> 8) & 0xFF;
+            msg[pos++] = username.length & 0xFF;
+            for (var i = 0; i < username.length; i++) msg[pos++] = username.charCodeAt(i);
+            msg[pos++] = (password.length >> 24) & 0xFF;
+            msg[pos++] = (password.length >> 16) & 0xFF;
+            msg[pos++] = (password.length >> 8) & 0xFF;
+            msg[pos++] = password.length & 0xFF;
+            for (var i = 0; i < password.length; i++) msg[pos++] = password.charCodeAt(i);
+            
+            send(msg);
+            log('Sent credentials');
+            creds.style.display = 'none';
+        };
+        
+        function sendEncodings() {
+            var msg = new Uint8Array([6, 0, 0, 0, 2, 0,0,0,0, 255,255,255,255]);
+            msg[4] = 2;
+            send(msg);
+        }
+        
+        function requestUpdate() {
+            var msg = new Uint8Array(10);
+            msg[0] = 3;
+            send(msg);
+        }
+        
+        function renderFramebuffer(data) {
+            var numRects = u16(data, 2);
+            var pos = 4;
+            for (var i = 0; i < numRects; i++) {
+                var x = u16(data, pos);
+                var y = u16(data, pos + 2);
+                var w = u16(data, pos + 4);
+                var h = u16(data, pos + 6);
+                var enc = u32(data, pos + 8);
+                pos += 12;
+                if (enc === 0) {
+                    var imgData = new ImageData(
+                        new Uint8ClampedArray(data.slice(pos, pos + w * h * 4)),
+                        w, h
+                    );
+                    ctx.putImageData(imgData, x, y);
+                    pos += w * h * 4;
+                } else {
+                    pos += w * h * 4;
+                }
+            }
+        }
+    })();
+    </script>
+</body>
+</html>

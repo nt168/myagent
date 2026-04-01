@@ -1,0 +1,25 @@
+[project]
+name = "checkpilot"
+version = "0.1.0"
+description = "VNC-based remote testing platform with AI assistance"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "websockets>=13.0",
+    "python-dotenv>=1.0.0",
+    "pyyaml>=6.0.1",
+    "aiosqlite>=0.19.0",
+    "httpx>=0.26.0",
+    "Pillow>=10.2.0",
+    "vncdotool>=1.1.0",
+    "openai>=1.12.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend/app"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

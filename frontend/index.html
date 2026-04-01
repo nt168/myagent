@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CheckPilot - 远程终端测试平台</title>
+    <link rel="stylesheet" href="/static/css/style.css?v=20260401b">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <h1>Agent</h1>
+            <div class="header-controls">
+                <button id="add-machine-btn" class="btn btn-primary">增加机器</button>
+                <div class="mode-toggle">
+                    <label class="toggle">
+                        <input type="checkbox" id="permission-mode">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="mode-label">需要许可模式</span>
+                </div>
+                <div class="mode-toggle">
+                    <label class="toggle">
+                        <input type="checkbox" id="direct-llm-mode">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="mode-label">直连 llm_serv</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="vnc-section">
+                <div class="section-header">
+                    <h2>Linux远程终端</h2>
+                    <div class="vnc-status" id="terminal-status">未连接</div>
+                </div>
+                <div class="vnc-viewer-container">
+                    <div id="vnc-viewer" class="vnc-viewer">
+                        <iframe id="terminal-iframe" src="about:blank" style="width:100%;height:100%;border:none;"></iframe>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ai-section">
+                <div class="section-header">
+                    <h2>远程机器列表</h2>
+                </div>
+                <div class="chat-container">
+                    <div id="machine-list" class="machine-list">
+                    </div>
+                    <div class="section-header output-header">
+                        <h2>推理大模型输出区域</h2>
+                    </div>
+                    <div id="chat-messages" class="chat-messages"></div>
+                    <div class="permission-requests" id="permission-requests" style="display: none;">
+                        <div class="permission-request">
+                            <h4>AI请求执行操作</h4>
+                            <p id="permission-desc"></p>
+                            <div class="permission-actions">
+                                <button id="allow-btn" class="btn btn-success">允许</button>
+                                <button id="deny-btn" class="btn btn-danger">拒绝</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-input-area">
+                        <textarea id="chat-input" placeholder="输入自然语言任务描述，例如：查看机器的磁盘使用率" rows="2"></textarea>
+                        <button id="send-btn" class="btn btn-primary">发送</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/app.js?v=20260401b"></script>
+</body>
+</html>

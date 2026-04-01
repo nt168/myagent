@@ -1,0 +1,23 @@
+# File Transfer Server Configuration File
+# Default location: /etc/ftran_serv.conf
+
+# Listen port (default: 17000)
+ListenPort=17000
+
+# Listen IP address (0.0.0.0 for all interfaces)
+ListenIP=0.0.0.0
+
+# Directory to save received files
+SaveDir=/var/ftran/uploads
+
+# Maximum concurrent connections
+MaxConnections=10
+
+# Log level (0-5, higher = more verbose)
+LogLevel=1
+
+# Log file location
+LogFile=/var/log/ftran_serv.log
+
+# PID file location
+PidFile=/var/run/ftran_serv.pid

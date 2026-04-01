@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>CheckPilot VNC Viewer</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: dimgrey;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        html {
+            height: 100%;
+        }
+        #top_bar {
+            background-color: #6e84a3;
+            color: white;
+            font: bold 12px Helvetica;
+            padding: 6px 5px 4px 5px;
+            border-bottom: 1px outset;
+        }
+        #status {
+            text-align: center;
+        }
+        #sendCtrlAltDelButton {
+            position: fixed;
+            top: 0px;
+            right: 0px;
+            border: 1px outset;
+            padding: 5px 5px 4px 5px;
+            cursor: pointer;
+        }
+        #screen {
+            flex: 1;
+            overflow: hidden;
+        }
+    </style>
+    <script type="module" crossorigin="anonymous">
+        import RFB from './core/rfb.js';
+
+        let rfb;
+        let desktopName;
+
+        function connectedToServer(e) {
+            status("Connected to " + desktopName);
+            window.parent.postMessage({type: 'vnc_connected', name: desktopName}, '*');
+        }
+
+        function disconnectedFromServer(e) {
+            console.error("VNC disconnected:", e.detail);
+            if (e.detail.clean) {
+                status("Disconnected");
+                window.parent.postMessage({type: 'vnc_disconnected'}, '*');
+            } else {
+                status("Connection error - check server");
+                window.parent.postMessage({type: 'vnc_error'}, '*');
+            }
+        }
+
+        function credentialsAreRequired(e) {
+            const password = prompt("VNC Password required:");
+            rfb.sendCredentials({ password: password });
+        }
+
+        function updateDesktopName(e) {
+            desktopName = e.detail.name;
+        }
+
+        function sendCtrlAltDel() {
+            rfb.sendCtrlAltDel();
+            return false;
+        }
+
+        function status(text) {
+            document.getElementById('status').textContent = text;
+        }
+
+        function readQueryVariable(name, defaultValue) {
+            const re = new RegExp('.*[?&]' + name + '=([^&#]*)'),
+                  match = document.location.href.match(re);
+            if (match) {
+                return decodeURIComponent(match[1]);
+            }
+            return defaultValue;
+        }
+
+        document.getElementById('sendCtrlAltDelButton').onclick = sendCtrlAltDel;
+
+        const host = readQueryVariable('host', window.location.hostname);
+        const vncPort = readQueryVariable('port', window.location.port);
+        const password = readQueryVariable('password');
+        const path = readQueryVariable('path', 'websockify');
+
+        status("Connecting via proxy...");
+
+        let proxyUrl;
+        if (window.location.protocol === "https:") {
+            proxyUrl = 'wss';
+        } else {
+            proxyUrl = 'ws';
+        }
+        proxyUrl += '://' + window.location.host;
+        proxyUrl += '/api/vnc/ws?host=' + encodeURIComponent(host);
+        proxyUrl += '&port=' + encodeURIComponent(vncPort);
+
+        console.log('Connecting via proxy:', proxyUrl);
+
+        rfb = new RFB(document.getElementById('screen'), proxyUrl, {
+            credentials: { password: password },
+            shared: true
+        });
+
+        rfb.addEventListener("connect",  connectedToServer);
+        rfb.addEventListener("disconnect", disconnectedFromServer);
+        rfb.addEventListener("credentialsrequired", credentialsAreRequired);
+        rfb.addEventListener("desktopname", updateDesktopName);
+
+        rfb.viewOnly = readQueryVariable('view_only', false);
+        rfb.scaleViewport = readQueryVariable('scale', false);
+    </script>
+</head>
+<body>
+    <div id="top_bar">
+        <div id="status">Loading</div>
+        <div id="sendCtrlAltDelButton">Send CtrlAltDel</div>
+    </div>
+    <div id="screen"></div>
+</body>
+</html>

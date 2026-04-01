@@ -1,0 +1,46 @@
+vnc:
+  host: "10.31.94.36"    # VNC服务器地址
+  port: 5902               # VNC端口
+  password: "abc123"             # VNC密码（如有）
+
+terminal:
+  enabled: true
+  protocol: "http"              # WebTTY访问协议（http/https）
+  host: ""                     # WebTTY页面访问主机，留空默认使用当前页面主机
+  port: 7681                     # WebTTY服务端口
+  path: "/"                     # WebTTY路径
+  auto_start: true              # 点击“开始测试”时自动拉起ttyd
+  auto_build: true              # 未检测到ttyd二进制时自动编译webtty
+  ttyd_binary: "webtty/build/ttyd"
+  ttyd_interface: "0.0.0.0"
+  browser_host: ""              # 覆盖前端访问ttyd的主机地址，留空默认当前页面主机
+  startup_timeout_sec: 10
+
+chat:
+  api_base: "http://localhost:4000/v1"  # AI API地址
+  api_key: "your-api-key"               # API密钥
+  model: "glm-4"                        # 模型名称
+  temperature: 0.1
+
+vision:
+  api_base: "http://localhost:4000/v1"
+  api_key: "your-api-key"
+  model: "glm-4.6v"                      # 视觉模型
+
+llm:
+  enabled: true
+  host: "127.0.0.1"
+  listen_host: "0.0.0.0"
+  port: 18001
+  auto_start: true
+  startup_timeout_sec: 20
+  connect_timeout_sec: 2.0
+  binary: "llm/serv/llm_serv"
+  engine_binary: "llm/engine/mnn/llm_demo"
+  model_config_path: "llm/models/Qwen35-08b_mnn/config.json"
+  workdir: "llm"
+  verbose: false
+
+screenshot:
+  enabled: true
+  quality: 85
